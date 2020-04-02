@@ -30,12 +30,15 @@ using namespace cv;
 // user selected bounding box
 Rect2d boundingBox;
 
+// Multi
+vector<Rect> boundingBoxs;
+
 void onChange(int pos, void *userdata);
 
 int main(int argc, char **argv)
 {
     cout << "[Usage]" << endl;
-    cout << "  ./executableName videoFileName (optional)trackerName" << endl;        
+    cout << "  ./executableName videoFileName (optional)trackerName" << endl;
     cout << "     trackerName : csrt(default), kcf, boosting, goturn, medianflow, mil, mosse, tld" << endl;
     cout << "     ex) ./objectTracking04-1 videofilename.mp4 csrt" << endl;
 
@@ -62,7 +65,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // input Video    
+    // input Video
     VideoCapture inputVideo;
 
     // create VideoCapture objects
@@ -132,9 +135,13 @@ int main(int argc, char **argv)
     textLine3.y = 150;
 
     // Tracker
-    Ptr<Tracker> myTracker;    
+    Ptr<Tracker> myTracker;
     bool isTracking = false;
     bool trackingSuccess = false;
+
+    // Multi
+    // Create multitracker
+    Ptr<MultiTracker> multiTracker = cv::MultiTracker::create();
 
     // calculate fps
     double playFps = 0;
@@ -148,24 +155,36 @@ int main(int argc, char **argv)
     while (true)
     {
         // Grab a single image from the video file
-        inputVideo >> singleFrame;        
+        inputVideo >> singleFrame;
 
         // End condition, if there is not reamining frame.
         if (singleFrame.empty())
             break;
 
         // Output video resolution
-         resize(singleFrame, smallsingleFrame, Size(OUT_VIDEO_WIDTH, OUT_VIDEO_HEIGHT), 0, 0, 1);
-               
+        resize(singleFrame, smallsingleFrame, Size(OUT_VIDEO_WIDTH, OUT_VIDEO_HEIGHT), 0, 0, 1);
+
         // Update the bounding box
         if (isTracking == true)
-            trackingSuccess = myTracker->update(smallsingleFrame, boundingBox);
+        {
+            // Multi
+            // trackingSuccess = myTracker->update(smallsingleFrame, boundingBox);
+            trackingSuccess = multiTracker->update(smallsingleFrame);            
+        }
 
         // If fail to track
         if (trackingSuccess)
         {
+            // Multi
             // draw the bounding box
-            rectangle(smallsingleFrame, boundingBox, Scalar(0, 0, 255), 2);
+            // rectangle(smallsingleFrame, boundingBox, Scalar(0, 0, 255), 2);
+            // isTracking = true;
+
+            // Multi
+            for (unsigned i = 0; i < multiTracker->getObjects().size(); i++)
+            {
+                rectangle(smallsingleFrame, multiTracker->getObjects()[i], Scalar(0, 0, 255), 2, 1);
+            }
             isTracking = true;
         }
         else
@@ -189,25 +208,32 @@ int main(int argc, char **argv)
         // For later on, DO NOT REMOVE THIS.
         // setTrackbarPos("Move to Frame #", "OutputWindow", inputVideo.get(CAP_PROP_POS_FRAMES));
 
-        // show a signleframe        
+        // show a signleframe
         imshow("OutputWindow", smallsingleFrame);
 
         // Keyboard event handle
         inputKey = waitKey(initDelay);
         //inputKey = waitKey(1);
 
-        if (inputKey == 27) // esc key to exit play
+        // Multi
+        //if (inputKey == 27) // esc key to exit play
+        if (inputKey == 140) // ` key to exit play
             break;
         else if (inputKey == 66 || inputKey == 98) // 'b' or 'B' key to set a bounding box
         {
-            boundingBox = selectROI("OutputWindow", smallsingleFrame, false, false); //opencv_contrib
+            // Multi
+            //// Create Bounding Box
+            // boundingBox = selectROI("OutputWindow", smallsingleFrame, false, false); //opencv_contrib            
+            cv::selectROIs("OutputWindow", smallsingleFrame, boundingBoxs, false, false); //opencv_contrib
 
+            // Multi
+            /*
             if (boundingBox.area() > 0.0)
             {
-                if(trackerName == "CSRT")
+                if (trackerName == "CSRT")
                     myTracker = TrackerCSRT::create();
                 else if (trackerName == "KCF")
-                    myTracker = TrackerKCF::create();                    
+                    myTracker = TrackerKCF::create();
                 else if (trackerName == "BOOSTING")
                     myTracker = TrackerBoosting::create();
                 else if (trackerName == "GOTURN")
@@ -226,8 +252,29 @@ int main(int argc, char **argv)
             }
             else
             {
-                // destruct the tracker                
+                // destruct the tracker
                 myTracker->~Tracker();
+                isTracking = false;
+                trackingSuccess = false;
+            }
+            */
+            // Multi      
+            multiTracker = cv::MultiTracker::create();      
+            if (boundingBoxs.size() > 0)
+            {
+                // Multi
+                for (int i = 0; i < boundingBoxs.size(); i++)
+                {
+                    if (boundingBoxs[i].area() > 0.0)
+                    {
+                        multiTracker->add(TrackerKCF::create(), smallsingleFrame, Rect2d(boundingBoxs[i]));
+                        isTracking = true;
+                    }
+                }
+            }
+            else
+            {
+                multiTracker->~MultiTracker();
                 isTracking = false;
                 trackingSuccess = false;
             }
@@ -242,6 +289,6 @@ int main(int argc, char **argv)
 // To handle the trackbar move event
 void onChange(int pos, void *userdata)
 {
-    VideoCapture* vc = (VideoCapture *)userdata;
+    VideoCapture *vc = (VideoCapture *)userdata;
     vc->set(CAP_PROP_POS_FRAMES, pos);
 }
