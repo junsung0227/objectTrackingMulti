@@ -134,14 +134,10 @@ int main(int argc, char **argv)
     textLine3.x = 50;
     textLine3.y = 150;
 
-    // Tracker
-    Ptr<Tracker> myTracker;
+    // Multi Tracker    
+    Ptr<MultiTracker> multiTracker;
     bool isTracking = false;
-    bool trackingSuccess = false;
-
-    // Multi
-    // Create multitracker
-    Ptr<MultiTracker> multiTracker = cv::MultiTracker::create();
+    bool trackingSuccess = false;    
 
     // calculate fps
     double playFps = 0;
@@ -217,7 +213,7 @@ int main(int argc, char **argv)
 
         // Multi
         //if (inputKey == 27) // esc key to exit play
-        if (inputKey == 140) // ` key to exit play
+        if (inputKey == 96) // ` key to exit play
             break;
         else if (inputKey == 66 || inputKey == 98) // 'b' or 'B' key to set a bounding box
         {

@@ -1,4 +1,4 @@
-SET(execName objectTracking05)
+SET(execName objectTrackingMulti)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
 PROJECT(${execName})
 
